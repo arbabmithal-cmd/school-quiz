@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="sd">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>EverShine Live MCQ App</title>
+<style>
+    body { background:#f6fff6; font-family: Arial, sans-serif; padding:10px; font-weight:bold; }
+    .main { max-width:520px; margin:0 auto; background:white; border:3px solid #0f5132; border-radius:14px; padding:15px; box-shadow:0 4px 10px rgba(0,0,0,0.15); }
+    .header { background:#fff3e0; border:3px solid #e65100; border-radius:14px; text-align:center; padding:10px; margin-bottom:10px; color:#e65100; font-size: 14px; }
+    .q-box { background:#e8ffe8; border:2px solid #0f5132; border-radius:12px; padding:12px; margin-bottom:15px; }
+    .q-text { display: block; margin-bottom: 10px; font-size: 16px; color: #0f5132; }
+    .options { display: flex; justify-content: space-between; gap: 5px; }
+    .options button { flex:1; padding:10px 2px; border:1.5px solid #0f5132; border-radius:6px; background:white; font-weight:bold; cursor:pointer; font-size:12px; }
+    .selected { background:#add8e6 !important; border-color: #0056b3 !important; }
+    .actions { display: flex; gap: 5px; margin-top: 10px; }
+    .actions button { flex:1; padding:8px; border-radius:6px; border:1.5px solid #0f5132; cursor:pointer; font-weight:bold; font-size:12px; }
+    .hint-btn { background: #e7f1ff; }
+    .check-btn { background: #90ee90; }
+    .feedback { text-align: center; margin-top: 8px; font-size: 13px; font-weight: bold; }
+</style>
+</head>
+<body>
+
+<div class="main">
+    <div class="header">
+        EverShine Higher Secondary School, Meharapur<br>
+        <b>Live MCQ Quiz</b>
+    </div>
+
+    <div id="quiz-container">Questions loading...</div>
+</div>
+
+<script>
+// Aapka Google Sheet Link (CSV format mein)
+const sheetURL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vT9kl6Lpu3MVlHJKgKUvXUdaQpqv9IsSOF7tXEK65fD8em4diTe_EbilEBVhP5MedMUa932L7_6_ph_/pub?output=csv";
+
+async function loadQuiz() {
+    try {
+        const response = await fetch(sheetURL);
+        const data = await response.text();
+        const rows = data.split("\n").slice(1); // Heading row ko chor kar
+        const container = document.getElementById("quiz-container");
+        container.innerHTML = "";
+
+        rows.forEach((row, index) => {
+            // CSV parsing (basic)
+            const cols = row.split(",").map(c => c.trim().replace(/^"|"$/g, ''));
+            if(cols.length < 5) return;
+
+            const qBox = document.createElement("div");
+            qBox.className = "q-box";
+            qBox.innerHTML = `
+                <span class="q-text"><b>Q${index+1}:</b> ${cols[0]}</span>
+                <div class="options" id="opt-grp-${index}">
+                    <button onclick="sel(${index}, 0, this)">A. ${cols[1]}</button>
+                    <button onclick="sel(${index}, 1, this)">B. ${cols[2]}</button>
+                    <button onclick="sel(${index}, 2, this)">C. ${cols[3]}</button>
+                    <button onclick="sel(${index}, 3, this)">D. ${cols[4]}</button>
+                </div>
+                <div class="actions">
+                    <button class="hint-btn" onclick="showH(${index}, '${cols[6]}')">Hint</button>
+                    <button class="check-btn" onclick="check(${index}, ${cols[5]})">Check</button>
+                </div>
+                <div id="res-${index}" class="feedback"></div>
+            `;
+            container.appendChild(qBox);
+        });
+    } catch (e) {
+        document.getElementById("quiz-container").innerHTML = "Error loading questions. Make sure sheet is published as CSV.";
+    }
+}
+
+let userAnswers = {};
+window.sel = (qIdx, optIdx, btn) => {
+    const btns = document.getElementById(`opt-grp-${qIdx}`).querySelectorAll('button');
+    btns.forEach(b => b.classList.remove('selected'));
+    btn.classList.add('selected');
+    userAnswers[qIdx] = optIdx;
+};
+
+window.showH = (idx, hText) => {
+    const res = document.getElementById(`res-${idx}`);
+    res.innerHTML = "Hint: " + hText;
+    res.style.color = "#0f5132";
+};
+
+window.check = (idx, correct) => {
+    const sel = userAnswers[idx];
+    const res = document.getElementById(`res-${idx}`);
+    
+    if(sel === undefined) {
+        res.innerHTML = "Pahle jawab chunein!";
+        res.style.color = "orange";
+        return;
+    }
+
+    if(parseInt(sel) === parseInt(correct)) {
+        res.innerHTML = "✓ Bilkul Sahi!";
+        res.style.color = "green";
+        speak("That is right");
+    } else {
+        res.innerHTML = "✗ Galat - Phir koshish karein.";
+        res.style.color = "red";
+        speak("Oh wrong, keep trying again");
+    }
+};
+
+function speak(t) {
+    const u = new SpeechSynthesisUtterance(t);
+    u.rate = 1.5;
+    window.speechSynthesis.speak(u);
+}
+
+loadQuiz();
+</script>
+
+</body>
+</html>
